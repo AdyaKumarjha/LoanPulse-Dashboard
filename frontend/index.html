@@ -1,0 +1,2330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LoanPulse Analytics — Dual Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --ink: #0f1923;
+    --ink-soft: #3a4a58;
+    --paper: #f5f7fa;
+    --surface: #ffffff;
+    --accent1: #1a56db; /* sales blue */
+    --accent2: #0e9f6e; /* credit green */
+    --accent3: #e3a008; /* amber */
+    --accent-red: #e02424;
+    --border: #e2e8f0;
+    --shadow: 0 1px 4px rgba(15,25,35,.08), 0 4px 16px rgba(15,25,35,.06);
+    --radius: 10px;
+    --mono: 'JetBrains Mono', 'Fira Code', monospace;
+    --sans: 'Inter', system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+  }
+
+  /* ── LOGIN ── */
+  #login-screen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #0f1923 0%, #1a2d42 60%, #0e3460 100%);
+    position: relative;
+    overflow: hidden;
+  }
+  #login-screen::before {
+    content: '';
+    position: absolute;
+    width: 600px; height: 600px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(26,86,219,.18) 0%, transparent 70%);
+    top: -100px; right: -100px;
+    pointer-events: none;
+  }
+  .login-card {
+    background: rgba(255,255,255,.04);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 16px;
+    padding: 48px 40px;
+    width: 100%;
+    max-width: 420px;
+    position: relative;
+    z-index: 1;
+  }
+  .login-logo {
+    font-size: 13px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,.5);
+    margin-bottom: 8px;
+  }
+  .login-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 6px;
+  }
+  .login-sub {
+    font-size: 13px;
+    color: rgba(255,255,255,.45);
+    margin-bottom: 36px;
+  }
+  .field-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,.5);
+    margin-bottom: 8px;
+  }
+  .field-input, .field-select {
+    width: 100%;
+    padding: 12px 14px;
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.14);
+    border-radius: 8px;
+    color: #fff;
+    font-size: 14px;
+    font-family: var(--sans);
+    outline: none;
+    transition: border-color .2s;
+    margin-bottom: 20px;
+  }
+  .field-input:focus, .field-select:focus { border-color: var(--accent1); }
+  .field-select option { background: #1a2d42; color: #fff; }
+  .login-btn {
+    width: 100%;
+    padding: 14px;
+    background: var(--accent1);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .2s, transform .1s;
+    margin-top: 4px;
+  }
+  .login-btn:hover { background: #1747c4; }
+  .login-btn:active { transform: scale(.98); }
+  .login-error {
+    color: #fc8181;
+    font-size: 13px;
+    margin-top: 12px;
+    display: none;
+  }
+  .login-hint {
+    margin-top: 24px;
+    padding: 14px;
+    background: rgba(255,255,255,.04);
+    border-radius: 8px;
+    font-size: 12px;
+    color: rgba(255,255,255,.38);
+    line-height: 1.7;
+  }
+  .login-hint strong { color: rgba(255,255,255,.6); }
+
+  /* ── APP SHELL ── */
+  #app { display: none; flex-direction: column; min-height: 100vh; }
+
+  /* TOPBAR */
+  .topbar {
+    height: 56px;
+    background: var(--ink);
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    gap: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 1px 0 rgba(255,255,255,.06);
+  }
+  .topbar-brand {
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -.01em;
+  }
+  .topbar-brand span { color: var(--accent1); }
+  .topbar-spacer { flex: 1; }
+  .topbar-refresh {
+    font-size: 12px;
+    color: rgba(255,255,255,.4);
+  }
+  .topbar-user {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: rgba(255,255,255,.7);
+  }
+  .topbar-avatar {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    background: var(--accent1);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; color: #fff;
+  }
+  .topbar-logout {
+    padding: 6px 12px;
+    background: rgba(255,255,255,.08);
+    border: none; border-radius: 6px;
+    color: rgba(255,255,255,.6);
+    font-size: 12px;
+    cursor: pointer;
+    transition: background .2s;
+  }
+  .topbar-logout:hover { background: rgba(255,255,255,.14); }
+
+  /* TABS */
+  .tab-bar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    padding: 0 24px;
+    gap: 0;
+  }
+  .tab-btn {
+    padding: 16px 24px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink-soft);
+    border: none;
+    background: none;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    transition: color .2s, border-color .2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tab-btn.active { color: var(--accent1); border-bottom-color: var(--accent1); }
+  .tab-btn:hover:not(.active) { color: var(--ink); }
+  .tab-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .dot-blue { background: var(--accent1); }
+  .dot-green { background: var(--accent2); }
+
+  /* ROLE BANNER */
+  .role-banner {
+    background: linear-gradient(90deg, rgba(26,86,219,.08) 0%, transparent 100%);
+    border-bottom: 1px solid rgba(26,86,219,.12);
+    padding: 10px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 13px;
+  }
+  .role-pill {
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+  }
+  .role-admin { background: #eff6ff; color: var(--accent1); }
+  .role-sales { background: #ecfdf5; color: var(--accent2); }
+  .role-credit { background: #fef3c7; color: #92400e; }
+  .role-note { color: var(--ink-soft); }
+
+  /* TRUNCATED OVERLAY */
+  .truncate-overlay {
+    position: relative;
+  }
+  .truncate-blur {
+    filter: blur(4px);
+    pointer-events: none;
+    user-select: none;
+  }
+  .truncate-msg {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--ink);
+    color: #fff;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    z-index: 10;
+    box-shadow: var(--shadow);
+  }
+
+  /* DASHBOARD PANELS */
+  .dashboard { padding: 24px; display: none; }
+  .dashboard.active { display: block; }
+
+  /* STATS STRIP */
+  .stats-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 14px;
+    margin-bottom: 22px;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    box-shadow: var(--shadow);
+    position: relative;
+    overflow: hidden;
+  }
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+  .stat-card.blue::before { background: var(--accent1); }
+  .stat-card.green::before { background: var(--accent2); }
+  .stat-card.amber::before { background: var(--accent3); }
+  .stat-card.red::before { background: var(--accent-red); }
+  .stat-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin-bottom: 8px;
+  }
+  .stat-value {
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -.02em;
+    color: var(--ink);
+    font-family: var(--mono);
+  }
+  .stat-sub {
+    font-size: 11px;
+    color: var(--ink-soft);
+    margin-top: 4px;
+  }
+
+  /* GRID LAYOUTS */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; margin-bottom: 18px; }
+  .grid-12 { display: grid; grid-template-columns: 1fr 2fr; gap: 18px; margin-bottom: 18px; }
+  .grid-21 { display: grid; grid-template-columns: 2fr 1fr; gap: 18px; margin-bottom: 18px; }
+  @media (max-width: 900px) {
+    .grid-2, .grid-3, .grid-12, .grid-21 { grid-template-columns: 1fr; }
+    .stats-strip { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  /* CHART CARD */
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: var(--shadow);
+  }
+  .chart-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .chart-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ink);
+  }
+  .chart-sub {
+    font-size: 11px;
+    color: var(--ink-soft);
+  }
+  .chart-wrap { position: relative; width: 100%; }
+  .chart-wrap canvas { max-width: 100%; }
+
+  /* TABLE */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th {
+    text-align: left;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    padding: 8px 12px;
+    border-bottom: 2px solid var(--border);
+    white-space: nowrap;
+  }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background .15s; }
+  tbody tr:hover { background: #f8fafc; }
+  td { padding: 10px 12px; color: var(--ink); }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .badge-disbursed { background: #d1fae5; color: #065f46; }
+  .badge-approved  { background: #dbeafe; color: #1e40af; }
+  .badge-pending   { background: #fef3c7; color: #92400e; }
+  .badge-rejected  { background: #fee2e2; color: #991b1b; }
+  .badge-open      { background: #fef3c7; color: #92400e; }
+  .badge-closed    { background: #d1fae5; color: #065f46; }
+
+  .section-title {
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--ink);
+    margin-bottom: 16px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+    letter-spacing: -.01em;
+  }
+
+  /* Filter bar */
+  .filter-bar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .filter-bar select {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--ink);
+    background: var(--surface);
+    cursor: pointer;
+    outline: none;
+  }
+  .filter-label { font-size: 12px; font-weight: 600; color: var(--ink-soft); }
+
+  /* Progress bar */
+  .progress-bar-wrap { background: #e2e8f0; border-radius: 4px; height: 6px; width: 100%; }
+  .progress-bar-fill { height: 6px; border-radius: 4px; transition: width .4s; }
+
+  /* Refresh countdown */
+  #refresh-bar {
+    background: rgba(14,159,110,.1);
+    border-bottom: 1px solid rgba(14,159,110,.15);
+    padding: 5px 24px;
+    font-size: 12px;
+    color: var(--accent2);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  #refresh-bar .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent2); animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════
+     LOGIN SCREEN
+═══════════════════════════════════════════════ -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">LoanPulse Analytics</div>
+    <div class="login-title">Sign in</div>
+    <div class="login-sub">Access your dashboards</div>
+
+    <label class="field-label">Username</label>
+    <input id="login-user" class="field-input" type="text" placeholder="Enter username" autocomplete="off">
+
+    <label class="field-label">Password</label>
+    <input id="login-pass" class="field-input" type="password" placeholder="Enter password">
+
+    <label class="field-label">Role</label>
+    <select id="login-role" class="field-select">
+      <option value="">— Select role —</option>
+      <option value="admin">Admin (Full Access)</option>
+      <option value="sales_manager">Sales Manager</option>
+      <option value="credit_ops">Credit Operations</option>
+    </select>
+
+    <button class="login-btn" onclick="doLogin()">Sign in →</button>
+    <div class="login-error" id="login-error">Invalid credentials. Please try again.</div>
+
+    <div class="login-hint">
+      <strong>Demo credentials</strong><br>
+      Admin: admin / admin123<br>
+      Sales Manager: sales / sales123<br>
+      Credit Ops: credit / credit123
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     APP
+═══════════════════════════════════════════════ -->
+<div id="app">
+
+  <!-- Top bar -->
+  <div class="topbar">
+    <div class="topbar-brand">Loan<span>Pulse</span></div>
+    <div class="topbar-spacer"></div>
+    <div class="topbar-refresh" id="topbar-refresh">Last refreshed: just now</div>
+    <div class="topbar-user">
+      <div class="topbar-avatar" id="user-avatar">A</div>
+      <span id="user-label">Admin</span>
+    </div>
+    <button class="topbar-logout" onclick="doLogout()">Sign out</button>
+  </div>
+
+  <!-- Refresh bar -->
+  <div id="refresh-bar">
+    <div class="dot"></div>
+    <span>Live data · Auto-refreshes in <strong id="countdown">300</strong>s</span>
+  </div>
+
+  <!-- Role banner -->
+  <div class="role-banner">
+    <span class="role-pill role-admin" id="role-pill">ADMIN</span>
+    <span class="role-note" id="role-note">Full access to all dashboards and metrics.</span>
+  </div>
+
+  <!-- Tab bar -->
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab-sm" onclick="switchTab('sm')">
+      <span class="tab-dot dot-blue"></span>
+      Sales Manager Performance
+    </button>
+    <button class="tab-btn" id="tab-cr" onclick="switchTab('cr')">
+      <span class="tab-dot dot-green"></span>
+      Credit Operations
+    </button>
+  </div>
+
+  <!-- ─────────────────────────────────────────
+       DASHBOARD 1 — SALES MANAGER PERFORMANCE
+  ───────────────────────────────────────────── -->
+  <div class="dashboard active" id="dash-sm">
+    <div class="section-title">Sales Manager Performance Dashboard</div>
+
+    <!-- KPI strip -->
+    <div class="stats-strip">
+      <div class="stat-card blue">
+        <div class="stat-label">Total Applications</div>
+        <!-- <div class="stat-value">200</div> -->
+         <div class="stat-value" id="totalApplications">0</div>
+        <div class="stat-sub">Across 5 managers</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-label">Total Login Amount</div>
+        <!-- <div class="stat-value" style="font-size:20px">₹22.3Cr</div> -->
+       <div class="stat-value" id="totalLogin" style="font-size:20px">₹0</div>
+        <div class="stat-sub">Cumulative pipeline</div>
+      </div>
+      <div class="stat-card amber">
+        <div class="stat-label">Disbursed Amount</div>
+        <div class="stat-value" id="totalDisbursed" style="font-size:20px">₹0</div>
+        <div class="stat-sub">51 loans disbursed</div>
+      </div>
+      <div class="stat-card red">
+        <div class="stat-label">Rejection Rate</div>
+        <div class="stat-value">26.5%</div>
+        <div class="stat-sub">53 rejected</div>
+      </div>
+      <div class="stat-card blue">
+        <div class="stat-label">Approval Rate</div>
+        <div class="stat-value">58%</div>
+        <div class="stat-sub">Approved + Disbursed</div>
+      </div>
+    </div>
+
+    <!-- Charts row 1 -->
+    <div class="grid-2">
+      <div class="chart-card">
+        <div class="chart-header">
+          <div>
+            <div class="chart-title">Applications by Sales Manager</div>
+            <div class="chart-sub">Count by status</div>
+          </div>
+        </div>
+        <div class="chart-wrap" style="height:240px">
+          <canvas id="chart-sm-apps"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-header">
+          <div>
+            <div class="chart-title">Login Amount vs Disbursed Amount</div>
+            <div class="chart-sub">₹ in Lakhs per manager</div>
+          </div>
+        </div>
+        <div class="chart-wrap" style="height:240px">
+          <canvas id="chart-sm-amounts"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts row 2 -->
+    <div class="grid-3">
+      <div class="chart-card">
+        <div class="chart-header">
+          <div>
+            <div class="chart-title">Status Distribution</div>
+            <div class="chart-sub">All 200 applications</div>
+          </div>
+        </div>
+        <div class="chart-wrap" style="height:200px">
+          <canvas id="chart-status-pie"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-header">
+          <div>
+            <div class="chart-title">Product Mix</div>
+            <div class="chart-sub">STSL vs MLAP vs Combined</div>
+          </div>
+        </div>
+        <div class="chart-wrap" style="height:200px">
+          <canvas id="chart-product-pie"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-header">
+          <div>
+            <div class="chart-title">Region-wise Volume</div>
+            <div class="chart-sub">Login amount by region</div>
+          </div>
+        </div>
+        <div class="chart-wrap" style="height:200px">
+          <canvas id="chart-region-bar"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Manager Performance Table -->
+    <div class="chart-card" id="sm-table-section">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title">Manager-wise Scorecard</div>
+          <div class="chart-sub">Approval rate · disbursement rate · conversion funnel</div>
+        </div>
+      </div>
+      <div class="table-wrap" id="sm-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Sales Manager</th>
+              <th>Total Apps</th>
+              <th>Approved</th>
+              <th>Disbursed</th>
+              <th>Rejected</th>
+              <th>Pending</th>
+              <th>Login Amt (₹L)</th>
+              <th>Disb Amt (₹L)</th>
+              <th>Disb Rate</th>
+            </tr>
+          </thead>
+          <tbody id="sm-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Branch heatmap-table -->
+    <div class="chart-card" style="margin-top:18px" id="branch-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title">Branch Performance Overview</div>
+          <div class="chart-sub">Applications logged per branch</div>
+        </div>
+        <div class="filter-bar" style="margin:0">
+          <select id="sm-branch-filter" onchange="renderBranchTable()">
+            <option value="">All Regions</option>
+            <option value="North">North</option>
+            <option value="South">South</option>
+            <option value="East">East</option>
+            <option value="West">West</option>
+          </select>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Branch</th>
+              <th>Region</th>
+              <th>Applications</th>
+              <th>Login Amt (₹L)</th>
+              <th>Disbursed</th>
+              <th>Disb Amt (₹L)</th>
+              <th>Conversion</th>
+            </tr>
+          </thead>
+          <tbody id="branch-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div><!-- /dash-sm -->
+
+
+  <!-- ─────────────────────────────────────────
+       DASHBOARD 2 — CREDIT OPERATIONS
+  ───────────────────────────────────────────── -->
+  <div class="dashboard" id="dash-cr">
+    <div class="section-title">Credit Operations Dashboard</div>
+
+    <div class="stats-strip">
+      <div class="stat-card green">
+        <div class="stat-label">Total Queries</div>
+        <div class="stat-value">200</div>
+        <div class="stat-sub">Q0001–Q0200</div>
+      </div>
+      <div class="stat-card amber">
+        <div class="stat-label">Open Queries</div>
+        <div class="stat-value">105</div>
+        <div class="stat-sub">Pending resolution</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-label">Closed Queries</div>
+        <div class="stat-value">95</div>
+        <div class="stat-sub">47.5% resolution rate</div>
+      </div>
+      <div class="stat-card blue">
+        <div class="stat-label">Avg TAT (Hours)</div>
+        <div class="stat-value">11.9</div>
+        <div class="stat-sub">All credit managers</div>
+      </div>
+      <div class="stat-card red">
+        <div class="stat-label">Overdue (&gt;20h)</div>
+        <div class="stat-value">23</div>
+        <div class="stat-sub">Need attention</div>
+      </div>
+    </div>
+
+    <!-- Charts row 1 -->
+    <div class="grid-2">
+      <div class="chart-card">
+        <div class="chart-header">
+          <div>
+            <div class="chart-title">Query Volume by Credit Manager</div>
+            <div class="chart-sub">Open vs Closed</div>
+          </div>
+        </div>
+        <div class="chart-wrap" style="height:240px">
+          <canvas id="chart-cm-queries"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-header">
+          <div>
+            <div class="chart-title">Average TAT by Credit Analyst</div>
+            <div class="chart-sub">Hours · lower is better</div>
+          </div>
+        </div>
+        <div class="chart-wrap" style="height:240px">
+          <canvas id="chart-ca-tat"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts row 2 -->
+    <div class="grid-12">
+      <div class="chart-card">
+        <div class="chart-header">
+          <div>
+            <div class="chart-title">Query Type Breakdown</div>
+            <div class="chart-sub">200 queries</div>
+          </div>
+        </div>
+        <div class="chart-wrap" style="height:220px">
+          <canvas id="chart-query-type"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-header">
+          <div>
+            <div class="chart-title">Open vs Closed by Analyst</div>
+            <div class="chart-sub">Resolution ratio</div>
+          </div>
+        </div>
+        <div class="chart-wrap" style="height:220px">
+          <canvas id="chart-ca-openclose"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAT Distribution -->
+    <div class="chart-card" style="margin-bottom:18px">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title">TAT Distribution</div>
+          <div class="chart-sub">Queries grouped by resolution time (hours)</div>
+        </div>
+      </div>
+      <div class="chart-wrap" style="height:200px">
+        <canvas id="chart-tat-dist"></canvas>
+      </div>
+    </div>
+
+    <!-- Credit Ops table -->
+    <div class="chart-card" id="cr-table-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title">Query Detail Log</div>
+          <div class="chart-sub">Filter and review all 200 queries</div>
+        </div>
+        <div class="filter-bar" style="margin:0; gap:8px;">
+          <select id="cr-cm-filter" onchange="renderQueryTable()">
+            <option value="">All Managers</option>
+            <option value="CM_A">CM_A</option>
+            <option value="CM_B">CM_B</option>
+            <option value="CM_C">CM_C</option>
+          </select>
+          <select id="cr-status-filter" onchange="renderQueryTable()">
+            <option value="">All Status</option>
+            <option value="Open">Open</option>
+            <option value="Closed">Closed</option>
+          </select>
+          <select id="cr-type-filter" onchange="renderQueryTable()">
+            <option value="">All Types</option>
+            <option value="Bank Statement">Bank Statement</option>
+            <option value="Property Docs">Property Docs</option>
+            <option value="KYC">KYC</option>
+            <option value="Income Proof">Income Proof</option>
+          </select>
+        </div>
+      </div>
+      <div class="table-wrap" id="cr-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Query ID</th>
+              <th>App ID</th>
+              <th>Credit Manager</th>
+              <th>Credit Analyst</th>
+              <th>Query Type</th>
+              <th>TAT (hrs)</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="cr-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div><!-- /dash-cr -->
+
+</div><!-- /app -->
+
+<script>
+/* ══════════════════════════════════════════════
+   DATA
+═══════════════════════════════════════════════ */
+const LOANS = [
+  {id:"APP0001",date:"2026-04-03",region:"East",branch:"Pune",product:"STSL",sm:"Ravi Singh",login:321958,status:"Pending",approved:0,disbursed:0},
+  {id:"APP0002",date:"2026-03-16",region:"East",branch:"Jaipur",product:"STSL/MLAP",sm:"Ravi Singh",login:1303462,status:"Rejected",approved:0,disbursed:0},
+  {id:"APP0003",date:"2026-06-08",region:"South",branch:"Mumbai",product:"STSL",sm:"Rahul Sharma",login:987201,status:"Pending",approved:0,disbursed:0},
+  {id:"APP0004",date:"2026-01-13",region:"North",branch:"Bangalore",product:"STSL",sm:"Rahul Sharma",login:384779,status:"Rejected",approved:0,disbursed:0},
+  {id:"APP0005",date:"2026-01-06",region:"South",branch:"Kolkata",product:"STSL/MLAP",sm:"Amit Jain",login:1748762,status:"Disbursed",approved:1538862,disbursed:1538862},
+  {id:"APP0006",date:"2026-04-21",region:"North",branch:"Pune",product:"STSL/MLAP",sm:"Ravi Singh",login:791723,status:"Disbursed",approved:789068,disbursed:789068},
+  {id:"APP0007",date:"2026-03-30",region:"West",branch:"Kolkata",product:"MLAP",sm:"Neha Gupta",login:1505416,status:"Disbursed",approved:1208327,disbursed:1208327},
+  {id:"APP0008",date:"2026-02-13",region:"South",branch:"Bangalore",product:"STSL/MLAP",sm:"Pooja Verma",login:1980488,status:"Rejected",approved:0,disbursed:0},
+  {id:"APP0009",date:"2026-01-26",region:"South",branch:"Delhi",product:"MLAP",sm:"Pooja Verma",login:772843,status:"Approved",approved:747060,disbursed:0},
+  {id:"APP0010",date:"2026-04-24",region:"South",branch:"Mumbai",product:"MLAP",sm:"Ravi Singh",login:1005889,status:"Rejected",approved:0,disbursed:0},
+  {id:"APP0011",date:"2026-02-04",region:"South",branch:"Mumbai",product:"MLAP",sm:"Pooja Verma",login:1687550,status:"Rejected",approved:0,disbursed:0},
+  {id:"APP0012",date:"2026-01-31",region:"North",branch:"Jaipur",product:"MLAP",sm:"Ravi Singh",login:1246797,status:"Disbursed",approved:1227316,disbursed:1227316},
+  {id:"APP0013",date:"2026-04-14",region:"North",branch:"Delhi",product:"STSL",sm:"Ravi Singh",login:1597527,status:"Rejected",approved:0,disbursed:0},
+  {id:"APP0014",date:"2026-03-29",region:"North",branch:"Bangalore",product:"STSL/MLAP",sm:"Amit Jain",login:1625472,status:"Approved",approved:1621209,disbursed:0},
+  {id:"APP0015",date:"2026-06-13",region:"North",branch:"Pune",product:"STSL",sm:"Neha Gupta",login:680754,status:"Approved",approved:641453,disbursed:0},
+  {id:"APP0016",date:"2026-02-01",region:"West",branch:"Delhi",product:"MLAP",sm:"Rahul Sharma",login:488998,status:"Rejected",approved:0,disbursed:0},
+  {id:"APP0017",date:"2026-01-28",region:"East",branch:"Bangalore",product:"MLAP",sm:"Amit Jain",login:551279,status:"Disbursed",approved:475311,disbursed:475311},
+  {id:"APP0018",date:"2026-06-15",region:"South",branch:"Pune",product:"STSL",sm:"Ravi Singh",login:1094498,status:"Approved",approved:959421,disbursed:0},
+  {id:"APP0019",date:"2026-04-13",region:"East",branch:"Delhi",product:"STSL/MLAP",sm:"Neha Gupta",login:1239577,status:"Disbursed",approved:1182796,disbursed:1182796},
+  {id:"APP0020",date:"2026-06-19",region:"East",branch:"Delhi",product:"STSL",sm:"Pooja Verma",login:322409,status:"Pending",approved:0,disbursed:0},
+  {id:"APP0021",date:"2026-05-03",region:"East",branch:"Jaipur",product:"STSL",sm:"Amit Jain",login:1659933,status:"Approved",approved:1410708,disbursed:0},
+  {id:"APP0022",date:"2026-03-07",region:"South",branch:"Jaipur",product:"MLAP",sm:"Rahul Sharma",login:579989,status:"Pending",approved:0,disbursed:0},
+  {id:"APP0023",date:"2026-01-19",region:"West",branch:"Bangalore",product:"MLAP",sm:"Amit Jain",login:309556,status:"Rejected",approved:0,disbursed:0},
+  {id:"APP0024",date:"2026-04-02",region:"North",branch:"Kolkata",product:"STSL",sm:"Rahul Sharma",login:742335,status:"Rejected",approved:0,disbursed:0},
+  {id:"APP0025",date:"2026-04-06",region:"North",branch:"Delhi",product:"STSL/MLAP",sm:"Amit Jain",login:1901240,status:"Disbursed",approved:1683399,disbursed:1683399},
+  {id:"APP0026",date:"2026-06-14",region:"North",branch:"Pune",product:"MLAP",sm:"Pooja Verma",login:1998792,status:"Rejected",approved:0,disbursed:0},
+  {id:"APP0027",date:"2026-04-06",region:"West",branch:"Delhi",product:"STSL",sm:"Rahul Sharma",login:365838,status:"Disbursed",approved:316318,disbursed:316318},
+  {id:"APP0028",date:"2026-01-03",region:"South",branch:"Mumbai",product:"STSL/MLAP",sm:"Rahul Sharma",login:239353,status:"Pending",approved:0,disbursed:0},
+  {id:"APP0029",date:"2026-04-03",region:"South",branch:"Mumbai",product:"MLAP",sm:"Ravi Singh",login:791460,status:"Approved",approved:791102,disbursed:0},
+  {id:"APP0030",date:"2026-04-16",region:"South",branch:"Jaipur",product:"MLAP",sm:"Pooja Verma",login:1680415,status:"Approved",approved:1557527,disbursed:0},
+  {id:"APP0031",date:"2026-05-05",region:"East",branch:"Kolkata",product:"STSL",sm:"Pooja Verma",login:1432310,status:"Disbursed",approved:1251740,disbursed:1251740},
+  {id:"APP0032",date:"2026-04-29",region:"East",branch:"Delhi",product:"STSL",sm:"Pooja Verma",login:306081,status:"Rejected",approved:0,disbursed:0},
+  {id:"APP0033",date:"2026-04-03",region:"East",branch:"Bangalore",product:"STSL/MLAP",sm:"Pooja Verma",login:1859066,status:"Rejected",approved:0,disbursed:0},
+  {id:"APP0034",date:"2026-05-08",region:"West",branch:"Bangalore",product:"STSL",sm:"Rahul Sharma",login:1110681,status:"Disbursed",approved:1068364,disbursed:1068364},
+  {id:"APP0035",date:"2026-01-30",region:"South",branch:"Delhi",product:"STSL/MLAP",sm:"Pooja Verma",login:677095,status:"Pending",approved:0,disbursed:0},
+  {id:"APP0036",date:"2026-06-07",region:"South",branch:"Mumbai",product:"STSL/MLAP",sm:"Pooja Verma",login:1715448,status:"Approved",approved:1444089,disbursed:0},
+  {id:"APP0037",date:"2026-04-02",region:"North",branch:"Bangalore",product:"STSL",sm:"Neha Gupta",login:845263,status:"Rejected",approved:0,disbursed:0},
+  {id:"APP0038",date:"2026-04-30",region:"North",branch:"Jaipur",product:"STSL/MLAP",sm:"Rahul Sharma",login:886976,status:"Pending",approved:0,disbursed:0},
+  {id:"APP0039",date:"2026-04-21",region:"West",branch:"Kolkata",product:"STSL",sm:"Pooja Verma",login:469544,status:"Disbursed",approved:441405,disbursed:441405},
+  {id:"APP0040",date:"2026-06-15",region:"West",branch:"Bangalore",product:"MLAP",sm:"Amit Jain",login:868234,status:"Approved",approved:722654,disbursed:0},
+  {id:"APP0041",date:"2026-04-09",region:"North",branch:"Jaipur",product:"MLAP",sm:"Neha Gupta",login:1112495,status:"Rejected",approved:0,disbursed:0},
+  {id:"APP0042",date:"2026-06-13",region:"West",branch:"Jaipur",product:"STSL",sm:"Pooja Verma",login:1326081,status:"Rejected",approved:0,disbursed:0},
+  {id:"APP0043",date:"2026-01-24",region:"South",branch:"Jaipur",product:"STSL/MLAP",sm:"Amit Jain",login:1338848,status:"Pending",approved:0,disbursed:0},
+  {id:"APP0044",date:"2026-01-24",region:"West",branch:"Bangalore",product:"STSL/MLAP",sm:"Amit Jain",login:1859280,status:"Pending",approved:0,disbursed:0},
+  {id:"APP0045",date:"2026-06-08",region:"South",branch:"Kolkata",product:"STSL",sm:"Amit Jain",login:638741,status:"Disbursed",approved:542989,disbursed:542989},
+  {id:"APP0046",date:"2026-01-12",region:"South",branch:"Delhi",product:"STSL/MLAP",sm:"Rahul Sharma",login:1647687,status:"Disbursed",approved:1461299,disbursed:1461299},
+  {id:"APP0047",date:"2026-03-02",region:"West",branch:"Pune",product:"STSL/MLAP",sm:"Rahul Sharma",login:1998596,status:"Pending",approved:0,disbursed:0},
+  {id:"APP0048",date:"2026-06-08",region:"North",branch:"Kolkata",product:"STSL",sm:"Amit Jain",login:830271,status:"Approved",approved:829366,disbursed:0},
+  {id:"APP0049",date:"2026-04-03",region:"North",branch:"Kolkata",product:"STSL",sm:"Amit Jain",login:887995,status:"Approved",approved:879661,disbursed:0},
+  {id:"APP0050",date:"2026-06-10",region:"East",branch:"Delhi",product:"STSL/MLAP",sm:"Neha Gupta",login:1708027,status:"Approved",approved:1392160,disbursed:0},
+  {id:"APP0051",date:"2026-02-14",region:"South",branch:"Pune",product:"MLAP",sm:"Neha Gupta",login:889944,status:"Rejected",approved:0,disbursed:0},
+  {id:"APP0052",date:"2026-04-17",region:"East",branch:"Mumbai",product:"MLAP",sm:"Neha Gupta",login:1321567,status:"Disbursed",approved:1318938,disbursed:1318938},
+  {id:"APP0053",date:"2026-06-11",region:"North",branch:"Pune",product:"MLAP",sm:"Ravi Singh",login:397392,status:"Pending",approved:0,disbursed:0},
+  {id:"APP0054",date:"2026-02-10",region:"North",branch:"Jaipur",product:"MLAP",sm:"Rahul Sharma",login:730089,status:"Disbursed",approved:645367,disbursed:645367},
+  {id:"APP0055",date:"2026-05-04",region:"South",branch:"Bangalore",product:"STSL/MLAP",sm:"Pooja Verma",login:464512,status:"Pending",approved:0,disbursed:0},
+  {id:"APP0056",date:"2026-01-23",region:"East",branch:"Kolkata",product:"STSL/MLAP",sm:"Rahul Sharma",login:1280673,status:"Rejected",approved:0,disbursed:0},
+  {id:"APP0057",date:"2026-05-10",region:"South",branch:"Mumbai",product:"MLAP",sm:"Rahul Sharma",login:1301497,status:"Disbursed",approved:1296770,disbursed:1296770},
+  {id:"APP0058",date:"2026-03-11",region:"East",branch:"Kolkata",product:"STSL/MLAP",sm:"Pooja Verma",login:1225715,status:"Rejected",approved:0,disbursed:0},
+  {id:"APP0059",date:"2026-02-13",region:"West",branch:"Bangalore",product:"STSL",sm:"Pooja Verma",login:1362208,status:"Pending",approved:0,disbursed:0},
+  {id:"APP0060",date:"2026-04-04",region:"East",branch:"Pune",product:"STSL/MLAP",sm:"Pooja Verma",login:1171525,status:"Approved",approved:982764,disbursed:0},
+  {id:"APP0061",date:"2026-04-14",region:"South",branch:"Kolkata",product:"STSL/MLAP",sm:"Rahul Sharma",login:1343052,status:"Rejected",approved:0,disbursed:0},
+  {id:"APP0062",date:"2026-02-18",region:"East",branch:"Mumbai",product:"STSL",sm:"Neha Gupta",login:1846711,status:"Disbursed",approved:1637486,disbursed:1637486},
+  {id:"APP0063",date:"2026-01-14",region:"East",branch:"Delhi",product:"STSL",sm:"Rahul Sharma",login:1256884,status:"Rejected",approved:0,disbursed:0},
+  {id:"APP0064",date:"2026-04-06",region:"South",branch:"Kolkata",product:"STSL",sm:"Ravi Singh",login:950201,status:"Approved",approved:844226,disbursed:0},
+  {id:"APP0065",date:"2026-03-10",region:"South",branch:"Jaipur",product:"STSL/MLAP",sm:"Amit Jain",login:838836,status:"Approved",approved:831264,disbursed:0},
+  {id:"APP0066",date:"2026-05-04",region:"East",branch:"Jaipur",product:"MLAP",sm:"Rahul Sharma",login:940427,status:"Rejected",approved:0,disbursed:0},
+  {id:"APP0067",date:"2026-03-10",region:"East",branch:"Delhi",product:"MLAP",sm:"Pooja Verma",login:555612,status:"Rejected",approved:0,disbursed:0},
+  {id:"APP0068",date:"2026-05-04",region:"South",branch:"Mumbai",product:"STSL",sm:"Pooja Verma",login:360196,status:"Pending",approved:0,disbursed:0},
+  {id:"APP0069",date:"2026-04-11",region:"East",branch:"Mumbai",product:"MLAP",sm:"Ravi Singh",login:1704544,status:"Rejected",approved:0,disbursed:0},
+  {id:"APP0070",date:"2026-04-28",region:"South",branch:"Pune",product:"MLAP",sm:"Rahul Sharma",login:1841249,status:"Pending",approved:0,disbursed:0},
+  {id:"APP0071",date:"2026-01-07",region:"West",branch:"Mumbai",product:"STSL",sm:"Pooja Verma",login:1552695,status:"Approved",approved:1454553,disbursed:0},
+  {id:"APP0072",date:"2026-03-25",region:"West",branch:"Bangalore",product:"MLAP",sm:"Amit Jain",login:1601727,status:"Pending",approved:0,disbursed:0},
+  {id:"APP0073",date:"2026-06-19",region:"East",branch:"Jaipur",product:"STSL/MLAP",sm:"Rahul Sharma",login:1152699,status:"Approved",approved:1027805,disbursed:0},
+  {id:"APP0074",date:"2026-03-15",region:"East",branch:"Bangalore",product:"STSL",sm:"Ravi Singh",login:1286880,status:"Pending",approved:0,disbursed:0},
+  {id:"APP0075",date:"2026-01-26",region:"East",branch:"Delhi",product:"MLAP",sm:"Ravi Singh",login:1203531,status:"Disbursed",approved:1053633,disbursed:1053633},
+  {id:"APP0076",date:"2026-04-01",region:"South",branch:"Mumbai",product:"STSL/MLAP",sm:"Rahul Sharma",login:838873,status:"Rejected",approved:0,disbursed:0},
+  {id:"APP0077",date:"2026-04-04",region:"North",branch:"Pune",product:"STSL",sm:"Pooja Verma",login:203267,status:"Rejected",approved:0,disbursed:0},
+  {id:"APP0078",date:"2026-04-28",region:"North",branch:"Delhi",product:"STSL/MLAP",sm:"Rahul Sharma",login:1309268,status:"Approved",approved:1121266,disbursed:0},
+  {id:"APP0079",date:"2026-01-27",region:"South",branch:"Delhi",product:"STSL/MLAP",sm:"Ravi Singh",login:1069474,status:"Pending",approved:0,disbursed:0},
+  {id:"APP0080",date:"2026-01-14",region:"North",branch:"Pune",product:"STSL",sm:"Rahul Sharma",login:1555531,status:"Approved",approved:1455929,disbursed:0},
+  {id:"APP0081",date:"2026-03-25",region:"West",branch:"Delhi",product:"MLAP",sm:"Ravi Singh",login:834736,status:"Rejected",approved:0,disbursed:0},
+  {id:"APP0082",date:"2026-04-30",region:"North",branch:"Delhi",product:"STSL/MLAP",sm:"Pooja Verma",login:266234,status:"Disbursed",approved:233711,disbursed:233711},
+  {id:"APP0083",date:"2026-04-18",region:"West",branch:"Pune",product:"MLAP",sm:"Ravi Singh",login:1973832,status:"Disbursed",approved:1956778,disbursed:1956778},
+  {id:"APP0084",date:"2026-06-20",region:"East",branch:"Jaipur",product:"STSL",sm:"Rahul Sharma",login:1898884,status:"Disbursed",approved:1747900,disbursed:1747900},
+  {id:"APP0085",date:"2026-06-16",region:"South",branch:"Mumbai",product:"STSL",sm:"Amit Jain",login:987494,status:"Approved",approved:973853,disbursed:0},
+  {id:"APP0086",date:"2026-06-05",region:"East",branch:"Bangalore",product:"STSL",sm:"Neha Gupta",login:238102,status:"Approved",approved:207192,disbursed:0},
+  {id:"APP0087",date:"2026-06-05",region:"North",branch:"Kolkata",product:"STSL/MLAP",sm:"Ravi Singh",login:413945,status:"Pending",approved:0,disbursed:0},
+  {id:"APP0088",date:"2026-04-27",region:"South",branch:"Pune",product:"MLAP",sm:"Neha Gupta",login:1954279,status:"Rejected",approved:0,disbursed:0},
+  {id:"APP0089",date:"2026-03-24",region:"West",branch:"Jaipur",product:"STSL",sm:"Pooja Verma",login:1463108,status:"Approved",approved:1195312,disbursed:0},
+  {id:"APP0090",date:"2026-02-05",region:"West",branch:"Bangalore",product:"MLAP",sm:"Pooja Verma",login:1733584,status:"Disbursed",approved:1701580,disbursed:1701580},
+  {id:"APP0091",date:"2026-06-16",region:"East",branch:"Mumbai",product:"MLAP",sm:"Amit Jain",login:219870,status:"Disbursed",approved:210070,disbursed:210070},
+  {id:"APP0092",date:"2026-06-13",region:"North",branch:"Mumbai",product:"MLAP",sm:"Neha Gupta",login:1736038,status:"Rejected",approved:0,disbursed:0},
+  {id:"APP0093",date:"2026-03-02",region:"East",branch:"Delhi",product:"STSL/MLAP",sm:"Rahul Sharma",login:1278931,status:"Pending",approved:0,disbursed:0},
+  {id:"APP0094",date:"2026-04-03",region:"North",branch:"Delhi",product:"MLAP",sm:"Ravi Singh",login:1812162,status:"Approved",approved:1535810,disbursed:0},
+  {id:"APP0095",date:"2026-02-03",region:"North",branch:"Jaipur",product:"STSL",sm:"Ravi Singh",login:1625541,status:"Rejected",approved:0,disbursed:0},
+  {id:"APP0096",date:"2026-06-14",region:"East",branch:"Pune",product:"STSL",sm:"Neha Gupta",login:1734837,status:"Approved",approved:1732396,disbursed:0},
+  {id:"APP0097",date:"2026-05-03",region:"East",branch:"Delhi",product:"STSL",sm:"Amit Jain",login:1058158,status:"Approved",approved:892410,disbursed:0},
+  {id:"APP0098",date:"2026-01-03",region:"South",branch:"Kolkata",product:"STSL",sm:"Neha Gupta",login:1398735,status:"Disbursed",approved:1131701,disbursed:1131701},
+  {id:"APP0099",date:"2026-03-31",region:"West",branch:"Mumbai",product:"MLAP",sm:"Pooja Verma",login:770715,status:"Pending",approved:0,disbursed:0},
+  {id:"APP0100",date:"2026-06-04",region:"South",branch:"Delhi",product:"STSL",sm:"Rahul Sharma",login:620571,status:"Approved",approved:617393,disbursed:0},
+];
+
+const QUERIES = [
+  {id:"Q0001",app:"APP0001",cm:"CM_C",ca:"CA_1",type:"Bank Statement",tat:16,status:"Closed"},
+  {id:"Q0002",app:"APP0002",cm:"CM_B",ca:"CA_1",type:"Property Docs",tat:15,status:"Open"},
+  {id:"Q0003",app:"APP0003",cm:"CM_A",ca:"CA_1",type:"Bank Statement",tat:15,status:"Closed"},
+  {id:"Q0004",app:"APP0004",cm:"CM_B",ca:"CA_2",type:"Income Proof",tat:8,status:"Open"},
+  {id:"Q0005",app:"APP0005",cm:"CM_B",ca:"CA_3",type:"KYC",tat:20,status:"Closed"},
+  {id:"Q0006",app:"APP0006",cm:"CM_A",ca:"CA_2",type:"Property Docs",tat:5,status:"Open"},
+  {id:"Q0007",app:"APP0007",cm:"CM_C",ca:"CA_3",type:"Bank Statement",tat:11,status:"Closed"},
+  {id:"Q0008",app:"APP0008",cm:"CM_A",ca:"CA_4",type:"Income Proof",tat:17,status:"Open"},
+  {id:"Q0009",app:"APP0009",cm:"CM_B",ca:"CA_1",type:"KYC",tat:9,status:"Closed"},
+  {id:"Q0010",app:"APP0010",cm:"CM_C",ca:"CA_2",type:"Bank Statement",tat:13,status:"Open"},
+  {id:"Q0011",app:"APP0011",cm:"CM_A",ca:"CA_3",type:"Property Docs",tat:6,status:"Closed"},
+  {id:"Q0012",app:"APP0012",cm:"CM_B",ca:"CA_4",type:"KYC",tat:22,status:"Open"},
+  {id:"Q0013",app:"APP0013",cm:"CM_C",ca:"CA_1",type:"Income Proof",tat:14,status:"Closed"},
+  {id:"Q0014",app:"APP0014",cm:"CM_A",ca:"CA_2",type:"Bank Statement",tat:3,status:"Open"},
+  {id:"Q0015",app:"APP0015",cm:"CM_B",ca:"CA_3",type:"Property Docs",tat:18,status:"Closed"},
+  {id:"Q0016",app:"APP0016",cm:"CM_C",ca:"CA_4",type:"KYC",tat:7,status:"Open"},
+  {id:"Q0017",app:"APP0017",cm:"CM_A",ca:"CA_1",type:"Bank Statement",tat:10,status:"Closed"},
+  {id:"Q0018",app:"APP0018",cm:"CM_B",ca:"CA_2",type:"Income Proof",tat:21,status:"Open"},
+  {id:"Q0019",app:"APP0019",cm:"CM_C",ca:"CA_3",type:"KYC",tat:2,status:"Closed"},
+  {id:"Q0020",app:"APP0020",cm:"CM_A",ca:"CA_4",type:"Property Docs",tat:16,status:"Open"},
+  {id:"Q0021",app:"APP0021",cm:"CM_B",ca:"CA_1",type:"Bank Statement",tat:12,status:"Closed"},
+  {id:"Q0022",app:"APP0022",cm:"CM_C",ca:"CA_2",type:"Income Proof",tat:19,status:"Open"},
+  {id:"Q0023",app:"APP0023",cm:"CM_A",ca:"CA_3",type:"KYC",tat:4,status:"Closed"},
+  {id:"Q0024",app:"APP0024",cm:"CM_B",ca:"CA_4",type:"Bank Statement",tat:11,status:"Open"},
+  {id:"Q0025",app:"APP0025",cm:"CM_C",ca:"CA_1",type:"Property Docs",tat:23,status:"Closed"},
+  {id:"Q0026",app:"APP0026",cm:"CM_A",ca:"CA_2",type:"Income Proof",tat:8,status:"Open"},
+  {id:"Q0027",app:"APP0027",cm:"CM_B",ca:"CA_3",type:"KYC",tat:15,status:"Closed"},
+  {id:"Q0028",app:"APP0028",cm:"CM_C",ca:"CA_4",type:"Bank Statement",tat:6,status:"Open"},
+  {id:"Q0029",app:"APP0029",cm:"CM_A",ca:"CA_1",type:"Property Docs",tat:20,status:"Closed"},
+  {id:"Q0030",app:"APP0030",cm:"CM_B",ca:"CA_2",type:"KYC",tat:1,status:"Open"},
+  {id:"Q0031",app:"APP0031",cm:"CM_C",ca:"CA_3",type:"Income Proof",tat:17,status:"Closed"},
+  {id:"Q0032",app:"APP0032",cm:"CM_A",ca:"CA_4",type:"Bank Statement",tat:9,status:"Open"},
+  {id:"Q0033",app:"APP0033",cm:"CM_B",ca:"CA_1",type:"Property Docs",tat:14,status:"Closed"},
+  {id:"Q0034",app:"APP0034",cm:"CM_C",ca:"CA_2",type:"KYC",tat:3,status:"Open"},
+  {id:"Q0035",app:"APP0035",cm:"CM_A",ca:"CA_3",type:"Bank Statement",tat:21,status:"Closed"},
+  {id:"Q0036",app:"APP0036",cm:"CM_B",ca:"CA_4",type:"Income Proof",tat:13,status:"Open"},
+  {id:"Q0037",app:"APP0037",cm:"CM_C",ca:"CA_1",type:"KYC",tat:5,status:"Closed"},
+  {id:"Q0038",app:"APP0038",cm:"CM_A",ca:"CA_2",type:"Bank Statement",tat:18,status:"Open"},
+  {id:"Q0039",app:"APP0039",cm:"CM_B",ca:"CA_3",type:"Property Docs",tat:10,status:"Closed"},
+  {id:"Q0040",app:"APP0040",cm:"CM_C",ca:"CA_4",type:"Income Proof",tat:7,status:"Open"},
+  {id:"Q0041",app:"APP0041",cm:"CM_A",ca:"CA_1",type:"KYC",tat:16,status:"Closed"},
+  {id:"Q0042",app:"APP0042",cm:"CM_B",ca:"CA_2",type:"Bank Statement",tat:24,status:"Open"},
+  {id:"Q0043",app:"APP0043",cm:"CM_C",ca:"CA_3",type:"Property Docs",tat:2,status:"Closed"},
+  {id:"Q0044",app:"APP0044",cm:"CM_A",ca:"CA_4",type:"Income Proof",tat:12,status:"Open"},
+  {id:"Q0045",app:"APP0045",cm:"CM_B",ca:"CA_1",type:"KYC",tat:19,status:"Closed"},
+  {id:"Q0046",app:"APP0046",cm:"CM_C",ca:"CA_2",type:"Bank Statement",tat:8,status:"Open"},
+  {id:"Q0047",app:"APP0047",cm:"CM_A",ca:"CA_3",type:"Property Docs",tat:11,status:"Closed"},
+  {id:"Q0048",app:"APP0048",cm:"CM_B",ca:"CA_4",type:"KYC",tat:4,status:"Open"},
+  {id:"Q0049",app:"APP0049",cm:"CM_C",ca:"CA_1",type:"Income Proof",tat:22,status:"Closed"},
+  {id:"Q0050",app:"APP0050",cm:"CM_A",ca:"CA_2",type:"Bank Statement",tat:6,status:"Open"},
+  {id:"Q0051",app:"APP0051",cm:"CM_B",ca:"CA_3",type:"Property Docs",tat:15,status:"Closed"},
+  {id:"Q0052",app:"APP0052",cm:"CM_C",ca:"CA_4",type:"KYC",tat:9,status:"Open"},
+  {id:"Q0053",app:"APP0053",cm:"CM_A",ca:"CA_1",type:"Bank Statement",tat:17,status:"Closed"},
+  {id:"Q0054",app:"APP0054",cm:"CM_B",ca:"CA_2",type:"Income Proof",tat:1,status:"Open"},
+  {id:"Q0055",app:"APP0055",cm:"CM_C",ca:"CA_3",type:"KYC",tat:20,status:"Closed"},
+  {id:"Q0056",app:"APP0056",cm:"CM_A",ca:"CA_4",type:"Property Docs",tat:14,status:"Open"},
+  {id:"Q0057",app:"APP0057",cm:"CM_B",ca:"CA_1",type:"Bank Statement",tat:7,status:"Closed"},
+  {id:"Q0058",app:"APP0058",cm:"CM_C",ca:"CA_2",type:"Income Proof",tat:3,status:"Open"},
+  {id:"Q0059",app:"APP0059",cm:"CM_A",ca:"CA_3",type:"KYC",tat:23,status:"Closed"},
+  {id:"Q0060",app:"APP0060",cm:"CM_B",ca:"CA_4",type:"Bank Statement",tat:10,status:"Open"},
+  {id:"Q0061",app:"APP0061",cm:"CM_C",ca:"CA_1",type:"Property Docs",tat:16,status:"Closed"},
+  {id:"Q0062",app:"APP0062",cm:"CM_A",ca:"CA_2",type:"Income Proof",tat:5,status:"Open"},
+  {id:"Q0063",app:"APP0063",cm:"CM_B",ca:"CA_3",type:"KYC",tat:21,status:"Closed"},
+  {id:"Q0064",app:"APP0064",cm:"CM_C",ca:"CA_4",type:"Bank Statement",tat:13,status:"Open"},
+  {id:"Q0065",app:"APP0065",cm:"CM_A",ca:"CA_1",type:"Property Docs",tat:2,status:"Closed"},
+  {id:"Q0066",app:"APP0066",cm:"CM_B",ca:"CA_2",type:"Income Proof",tat:18,status:"Open"},
+  {id:"Q0067",app:"APP0067",cm:"CM_C",ca:"CA_3",type:"KYC",tat:11,status:"Closed"},
+  {id:"Q0068",app:"APP0068",cm:"CM_A",ca:"CA_4",type:"Bank Statement",tat:4,status:"Open"},
+  {id:"Q0069",app:"APP0069",cm:"CM_B",ca:"CA_1",type:"Property Docs",tat:19,status:"Closed"},
+  {id:"Q0070",app:"APP0070",cm:"CM_C",ca:"CA_2",type:"Income Proof",tat:8,status:"Open"},
+  {id:"Q0071",app:"APP0071",cm:"CM_A",ca:"CA_3",type:"KYC",tat:15,status:"Closed"},
+  {id:"Q0072",app:"APP0072",cm:"CM_B",ca:"CA_4",type:"Bank Statement",tat:6,status:"Open"},
+  {id:"Q0073",app:"APP0073",cm:"CM_C",ca:"CA_1",type:"Property Docs",tat:12,status:"Closed"},
+  {id:"Q0074",app:"APP0074",cm:"CM_A",ca:"CA_2",type:"Income Proof",tat:24,status:"Open"},
+  {id:"Q0075",app:"APP0075",cm:"CM_B",ca:"CA_3",type:"KYC",tat:9,status:"Closed"},
+  {id:"Q0076",app:"APP0076",cm:"CM_C",ca:"CA_4",type:"Bank Statement",tat:3,status:"Open"},
+  {id:"Q0077",app:"APP0077",cm:"CM_A",ca:"CA_1",type:"Property Docs",tat:17,status:"Closed"},
+  {id:"Q0078",app:"APP0078",cm:"CM_B",ca:"CA_2",type:"Income Proof",tat:10,status:"Open"},
+  {id:"Q0079",app:"APP0079",cm:"CM_C",ca:"CA_3",type:"KYC",tat:22,status:"Closed"},
+  {id:"Q0080",app:"APP0080",cm:"CM_A",ca:"CA_4",type:"Bank Statement",tat:7,status:"Open"},
+  {id:"Q0081",app:"APP0081",cm:"CM_B",ca:"CA_1",type:"Property Docs",tat:1,status:"Closed"},
+  {id:"Q0082",app:"APP0082",cm:"CM_C",ca:"CA_2",type:"Income Proof",tat:20,status:"Open"},
+  {id:"Q0083",app:"APP0083",cm:"CM_A",ca:"CA_3",type:"KYC",tat:13,status:"Closed"},
+  {id:"Q0084",app:"APP0084",cm:"CM_B",ca:"CA_4",type:"Bank Statement",tat:5,status:"Open"},
+  {id:"Q0085",app:"APP0085",cm:"CM_C",ca:"CA_1",type:"Property Docs",tat:16,status:"Closed"},
+  {id:"Q0086",app:"APP0086",cm:"CM_A",ca:"CA_2",type:"Income Proof",tat:11,status:"Open"},
+  {id:"Q0087",app:"APP0087",cm:"CM_B",ca:"CA_3",type:"KYC",tat:4,status:"Closed"},
+  {id:"Q0088",app:"APP0088",cm:"CM_C",ca:"CA_4",type:"Bank Statement",tat:23,status:"Open"},
+  {id:"Q0089",app:"APP0089",cm:"CM_A",ca:"CA_1",type:"Property Docs",tat:8,status:"Closed"},
+  {id:"Q0090",app:"APP0090",cm:"CM_B",ca:"CA_2",type:"Income Proof",tat:14,status:"Open"},
+  {id:"Q0091",app:"APP0091",cm:"CM_C",ca:"CA_3",type:"KYC",tat:6,status:"Closed"},
+  {id:"Q0092",app:"APP0092",cm:"CM_A",ca:"CA_4",type:"Bank Statement",tat:21,status:"Open"},
+  {id:"Q0093",app:"APP0093",cm:"CM_B",ca:"CA_1",type:"Property Docs",tat:2,status:"Closed"},
+  {id:"Q0094",app:"APP0094",cm:"CM_C",ca:"CA_2",type:"Income Proof",tat:18,status:"Open"},
+  {id:"Q0095",app:"APP0095",cm:"CM_A",ca:"CA_3",type:"KYC",tat:12,status:"Closed"},
+  {id:"Q0096",app:"APP0096",cm:"CM_B",ca:"CA_4",type:"Bank Statement",tat:7,status:"Open"},
+  {id:"Q0097",app:"APP0097",cm:"CM_C",ca:"CA_1",type:"Property Docs",tat:15,status:"Closed"},
+  {id:"Q0098",app:"APP0098",cm:"CM_A",ca:"CA_2",type:"Income Proof",tat:3,status:"Open"},
+  {id:"Q0099",app:"APP0099",cm:"CM_B",ca:"CA_3",type:"KYC",tat:19,status:"Closed"},
+  {id:"Q0100",app:"APP0100",cm:"CM_C",ca:"CA_4",type:"Bank Statement",tat:9,status:"Open"},
+];
+
+// Generate Q0101–Q0200 synthetically to match real stats
+const CMs=["CM_A","CM_B","CM_C"], CAs=["CA_1","CA_2","CA_3","CA_4"];
+const QTypes=["Bank Statement","Property Docs","KYC","Income Proof"];
+const QStatuses=["Open","Closed"];
+for(let i=101;i<=200;i++){
+  const id=`Q0${i}`;
+  const cm=CMs[i%3], ca=CAs[i%4];
+  const type=QTypes[i%4];
+  const tat=((i*7+3)%23)+1;
+  const status=i%2===0?"Open":"Closed";
+  QUERIES.push({id,app:`APP0${i}`,cm,ca,type,tat,status});
+}
+
+/* ══════════════════════════════════════════════
+   AUTH
+═══════════════════════════════════════════════ */
+
+
+async function doLogin() {
+
+    const email =
+        document.getElementById('login-user').value.trim();
+
+    const password =
+        document.getElementById('login-pass').value;
+
+    const errorDiv =
+        document.getElementById('login-error');
+
+    try {
+
+        const formData = new FormData();
+
+        formData.append("email", email);
+        formData.append("password", password);
+
+        const response = await fetch(
+            "http://localhost:3000/api/auth/login",
+            {
+                method: "POST",
+                body: formData
+            }
+        );
+
+        const data = await response.json();
+
+        console.log(data);
+
+        if (!data.success) {
+
+            errorDiv.style.display = "block";
+            errorDiv.innerText = data.message;
+            return;
+        }
+
+        // Save logged-in user
+        localStorage.setItem(
+            "user",
+            JSON.stringify(data.user)
+        );
+
+        // Open dashboard
+        loadDashboard(data.user);
+
+    } catch (error) {
+
+        console.error(error);
+
+        errorDiv.style.display = "block";
+        errorDiv.innerText = "Server Error";
+    }
+}
+
+
+function initializeDashboard(role, user) {
+
+    document.getElementById('login-screen').style.display = 'none';
+
+    document.getElementById('app').style.display = 'flex';
+
+    document.getElementById('user-label').innerText =
+        user.full_name;
+
+    document.getElementById('user-avatar').innerText =
+        user.full_name.charAt(0).toUpperCase();
+
+    applyRolePermissions(role);
+}
+
+
+function applyRolePermissions(role) {
+
+    const salesTab = document.getElementById('tab-sm');
+    const creditTab = document.getElementById('tab-cr');
+
+    if(role === 'sales_manager') {
+
+        creditTab.style.display = 'none';
+
+        switchTab('sm');
+
+        document.getElementById('role-pill').innerText =
+            'SALES';
+
+        document.getElementById('role-note').innerText =
+            'Sales Dashboard Access';
+
+    }
+    else if(role === 'credit_ops') {
+
+        salesTab.style.display = 'none';
+
+        switchTab('cr');
+
+        document.getElementById('role-pill').innerText =
+            'CREDIT';
+
+        document.getElementById('role-note').innerText =
+            'Credit Dashboard Access';
+
+    }
+    else {
+
+        document.getElementById('role-pill').innerText =
+            'ADMIN';
+
+        document.getElementById('role-note').innerText =
+            'Full Access';
+    }
+}
+
+
+window.onload = () => {
+
+    const user = localStorage.getItem('user');
+
+    if (user) {
+
+        loadDashboard(
+            JSON.parse(user)
+        );
+    }
+};
+
+
+async function doLogout() {
+
+    try {
+
+        await fetch(
+            'http://localhost:3000/api/auth/logout',
+            {
+                method: 'POST'
+            }
+        );
+
+    } catch (err) {
+
+        console.log(err);
+    }
+
+    localStorage.removeItem('user');
+
+    location.reload();
+}
+
+async function loadKPIs() {
+
+    try {
+
+        const response = await fetch(
+            'http://localhost:3000/api/loans/kpis'
+        );
+
+        const data = await response.json();
+
+        document.getElementById(
+            'totalApplications'
+        ).innerText =
+            data.totalApplications;
+
+        document.getElementById(
+            'totalLogin'
+        ).innerText =
+            '₹' + Number(data.totalLogin).toLocaleString();
+
+        document.getElementById(
+            'totalDisbursed'
+        ).innerText =
+            '₹' + Number(data.totalDisbursed).toLocaleString();
+
+    } catch (err) {
+
+        console.log(err);
+    }
+}
+
+
+
+async function signupUser() {
+
+    const full_name =
+        document.getElementById(
+            "signup-name"
+        ).value;
+
+    const email =
+        document.getElementById(
+            "signup-email"
+        ).value;
+
+    const password =
+        document.getElementById(
+            "signup-password"
+        ).value;
+
+    try {
+
+        const response =
+            await fetch(
+                `${API_BASE}/auth/signup`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+                    body: JSON.stringify({
+                        full_name,
+                        email,
+                        password
+                    })
+                }
+            );
+
+        const result =
+            await response.json();
+
+        alert(result.message);
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert("Signup Failed");
+    }
+}
+
+async function loadCreditDashboard() {
+    await Promise.all([
+        loadManagerVolume(),
+        loadAnalystTat(),
+        loadTypeBreakdown(),
+        loadQueryLog(),
+        loadTatDistribution()
+    ]);
+}
+
+
+
+async function loadManagerVolume() {
+
+    const res = await fetch(
+        `${API_BASE}/queries/manager-volume`
+    );
+
+    const data = await res.json();
+
+    const labels = data.map(x => x.manager_name);
+    const open = data.map(x => x.openCount);
+    const closed = data.map(x => x.closedCount);
+
+    new Chart(
+        document.getElementById("chart-cm-queries"),
+        {
+            type: "bar",
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: "Open",
+                        data: open
+                    },
+                    {
+                        label: "Closed",
+                        data: closed
+                    }
+                ]
+            }
+        }
+    );
+}
+
+
+async function loadAnalystTat() {
+
+    const res = await fetch(
+        `${API_BASE}/queries/analyst-tat`
+    );
+
+    const data = await res.json();
+
+    new Chart(
+        document.getElementById("chart-ca-tat"),
+        {
+            type: "bar",
+            data: {
+                labels: data.map(x => x.analyst_name),
+                datasets: [{
+                    label: "Avg TAT (Hours)",
+                    data: data.map(x => x.avgTat)
+                }]
+            }
+        }
+    );
+}
+
+
+async function loadTypeBreakdown() {
+
+    const res = await fetch(
+        `${API_BASE}/queries/type-breakdown`
+    );
+
+    const data = await res.json();
+
+    new Chart(
+        document.getElementById("chart-query-type"),
+        {
+            type: "pie",
+            data: {
+                labels: data.map(x => x.query_type),
+                datasets: [{
+                    data: data.map(x => x.count)
+                }]
+            }
+        }
+    );
+}
+
+
+
+async function loadTatDistribution() {
+
+    const res = await fetch(
+        `${API_BASE}/queries/tat-distribution`
+    );
+
+    const data = await res.json();
+
+    new Chart(
+        document.getElementById("chart-tat-dist"),
+        {
+            type: "bar",
+            data: {
+                labels: data.map(x => x.tatRange),
+                datasets: [{
+                    label: "Queries",
+                    data: data.map(x => x.count)
+                }]
+            }
+        }
+    );
+}
+
+
+async function loadQueryLog() {
+
+    const res = await fetch(
+        `${API_BASE}/queries/query-log`
+    );
+
+    const data = await res.json();
+
+    const tbody =
+        document.getElementById("cr-table-body");
+
+    tbody.innerHTML = "";
+
+    data.forEach(row => {
+
+        tbody.innerHTML += `
+            <tr>
+                <td>${row.query_id}</td>
+                <td>${row.application_id}</td>
+                <td>${row.manager_name}</td>
+                <td>${row.analyst_name}</td>
+                <td>${row.query_type}</td>
+                <td>${row.tat_hours}</td>
+                <td>
+                    <span class="badge ${
+                        row.status === 'Open'
+                            ? 'badge-open'
+                            : 'badge-closed'
+                    }">
+                        ${row.status}
+                    </span>
+                </td>
+            </tr>
+        `;
+    });
+}
+
+
+async function loadCreditKPIs() {
+
+    const res = await fetch(
+        `${API_BASE}/queries/kpis`
+    );
+
+    const data = await res.json();
+
+    document.getElementById("totalQueries").innerText =
+        data.totalQueries;
+
+    document.getElementById("openQueries").innerText =
+        data.openQueries;
+
+    document.getElementById("closedQueries").innerText =
+        data.closedQueries;
+
+    document.getElementById("avgTat").innerText =
+        data.avgTat;
+
+    document.getElementById("overdue").innerText =
+        data.overdue;
+}
+
+async function forgotPassword() {
+
+    const email =
+        document.getElementById(
+            "forgot-email"
+        ).value;
+
+    const newPassword =
+        document.getElementById(
+            "forgot-password"
+        ).value;
+
+    try {
+
+        const response =
+            await fetch(
+                `${API_BASE}/auth/forgot-password`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+                    body: JSON.stringify({
+                        email,
+                        newPassword
+                    })
+                }
+            );
+
+        const result =
+            await response.json();
+
+        alert(result.message);
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert("Reset Failed");
+    }
+}
+
+async function changePassword() {
+
+    const email =
+        currentUser.email;
+
+    const oldPassword =
+        document.getElementById(
+            "oldPassword"
+        ).value;
+
+    const newPassword =
+        document.getElementById(
+            "newPassword"
+        ).value;
+
+    try {
+
+        const response =
+            await fetch(
+                `${API_BASE}/auth/change-password`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+                    body: JSON.stringify({
+                        email,
+                        oldPassword,
+                        newPassword
+                    })
+                }
+            );
+
+        const result =
+            await response.json();
+
+        alert(result.message);
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert("Password Change Failed");
+    }
+}
+/* ══════════════════════════════════════════════
+   APP START
+═══════════════════════════════════════════════ */
+function startApp(){
+  document.getElementById("login-screen").style.display="none";
+  const app=document.getElementById("app");
+  app.style.display="flex";
+
+  // Avatar
+  document.getElementById("user-avatar").textContent=currentUser.name[0];
+  document.getElementById("user-label").textContent=currentUser.name;
+
+  // Role pill
+  const pill=document.getElementById("role-pill");
+  const note=document.getElementById("role-note");
+  const roleMap={
+    admin:    {cls:"role-admin",  label:"ADMIN",   note:"Full access to all dashboards and metrics."},
+    sales_manager:{cls:"role-sales",  label:"SALES MGR", note:"Access to Sales Manager Performance dashboard only."},
+    credit_ops:   {cls:"role-credit", label:"CREDIT OPS",note:"Access to Credit Operations dashboard only."},
+  };
+  const rm=roleMap[currentUser.role];
+  pill.className="role-pill "+rm.cls;
+  pill.textContent=rm.label;
+  note.textContent=rm.note;
+
+  // Tab visibility
+  const tabSM=document.getElementById("tab-sm");
+  const tabCR=document.getElementById("tab-cr");
+  const canSM=currentUser.access.includes("sm");
+  const canCR=currentUser.access.includes("cr");
+  tabSM.style.display=canSM?"":"none";
+  tabCR.style.display=canCR?"":"none";
+
+  // Default tab
+  if(canSM) switchTab("sm");
+  else switchTab("cr");
+
+  // Apply truncation for non-admin
+  applyTruncation();
+
+  buildCharts();
+  renderSMTable();
+  renderBranchTable();
+  renderQueryTable();
+  startCountdown();
+}
+
+function applyTruncation(){
+  if(currentUser.role==="admin") return;
+  // Sales manager: blur branch table
+  if(currentUser.role==="sales_manager"){
+    makeTruncated("branch-card","Branch detail is Admin-only");
+  }
+  // Credit ops: blur SM scorecard
+  if(currentUser.role==="credit_ops"){
+    makeTruncated("sm-table-section","Scorecard is Admin-only");
+    makeTruncated("cr-table-card","Full query log is Admin-only. Showing summary view.");
+  }
+}
+
+function makeTruncated(id, msg){
+  const el=document.getElementById(id);
+  if(!el) return;
+  el.classList.add("truncate-overlay");
+  const inner=el.querySelector(".table-wrap,.chart-wrap");
+  if(inner) inner.classList.add("truncate-blur");
+  const m=document.createElement("div");
+  m.className="truncate-msg"; m.textContent="🔒 "+msg;
+  el.appendChild(m);
+}
+
+/* ══════════════════════════════════════════════
+   TABS
+═══════════════════════════════════════════════ */
+function switchTab(tab){
+  ["sm","cr"].forEach(t=>{
+    document.getElementById("tab-"+t).classList.toggle("active",t===tab);
+    document.getElementById("dash-"+t).classList.toggle("active",t===tab);
+  });
+}
+
+/* ══════════════════════════════════════════════
+   COUNTDOWN TIMER
+═══════════════════════════════════════════════ */
+let countdown=300;
+function startCountdown(){
+  const el=document.getElementById("countdown");
+  const refresh=document.getElementById("topbar-refresh");
+  const iv=setInterval(()=>{
+    countdown--;
+    el.textContent=countdown;
+    if(countdown<=0){
+      countdown=300;
+      const now=new Date().toLocaleTimeString();
+      refresh.textContent="Last refreshed: "+now;
+    }
+  },1000);
+}
+
+/* ══════════════════════════════════════════════
+   SALES MANAGER TABLE
+═══════════════════════════════════════════════ */
+function renderSMTable(){
+  const managers=["Ravi Singh","Rahul Sharma","Amit Jain","Neha Gupta","Pooja Verma"];
+  const tbody=document.getElementById("sm-table-body");
+  tbody.innerHTML="";
+  managers.forEach(sm=>{
+    const apps=LOANS.filter(l=>l.sm===sm);
+    const total=apps.length;
+    const approved=apps.filter(l=>l.status==="Approved").length;
+    const disbursed=apps.filter(l=>l.status==="Disbursed").length;
+    const rejected=apps.filter(l=>l.status==="Rejected").length;
+    const pending=apps.filter(l=>l.status==="Pending").length;
+    const loginAmt=apps.reduce((s,l)=>s+l.login,0);
+    const disbAmt=apps.reduce((s,l)=>s+l.disbursed,0);
+    const disbRate=total>0?Math.round(disbursed/total*100):0;
+    const tr=document.createElement("tr");
+    tr.innerHTML=`
+      <td><strong>${sm}</strong></td>
+      <td>${total}</td>
+      <td>${approved}</td>
+      <td>${disbursed}</td>
+      <td><span class="badge badge-rejected">${rejected}</span></td>
+      <td><span class="badge badge-pending">${pending}</span></td>
+      <td>₹${(loginAmt/100000).toFixed(1)}L</td>
+      <td>₹${(disbAmt/100000).toFixed(1)}L</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="progress-bar-wrap" style="width:60px">
+            <div class="progress-bar-fill" style="width:${disbRate}%;background:var(--accent2)"></div>
+          </div>
+          <span>${disbRate}%</span>
+        </div>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+/* ══════════════════════════════════════════════
+   BRANCH TABLE
+═══════════════════════════════════════════════ */
+function renderBranchTable(){
+  const regionFilter=document.getElementById("sm-branch-filter").value;
+  const branches=["Delhi","Mumbai","Pune","Bangalore","Jaipur","Kolkata"];
+  const regionMap={Delhi:"North",Mumbai:"West",Pune:"West",Bangalore:"South",Jaipur:"North",Kolkata:"East"};
+  const tbody=document.getElementById("branch-table-body");
+  tbody.innerHTML="";
+  branches.forEach(b=>{
+    const region=regionMap[b];
+    if(regionFilter && region!==regionFilter) return;
+    const apps=LOANS.filter(l=>l.branch===b);
+    const loginAmt=apps.reduce((s,l)=>s+l.login,0);
+    const disbCount=apps.filter(l=>l.status==="Disbursed").length;
+    const disbAmt=apps.reduce((s,l)=>s+l.disbursed,0);
+    const conv=apps.length>0?Math.round(disbCount/apps.length*100):0;
+    const tr=document.createElement("tr");
+    tr.innerHTML=`
+      <td><strong>${b}</strong></td>
+      <td>${region}</td>
+      <td>${apps.length}</td>
+      <td>₹${(loginAmt/100000).toFixed(1)}L</td>
+      <td>${disbCount}</td>
+      <td>₹${(disbAmt/100000).toFixed(1)}L</td>
+      <td>${conv}%</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+/* ══════════════════════════════════════════════
+   QUERY TABLE
+═══════════════════════════════════════════════ */
+function renderQueryTable(){
+  const cmF=document.getElementById("cr-cm-filter").value;
+  const stF=document.getElementById("cr-status-filter").value;
+  const tpF=document.getElementById("cr-type-filter").value;
+  let rows=QUERIES.filter(q=>
+    (!cmF||q.cm===cmF)&&
+    (!stF||q.status===stF)&&
+    (!tpF||q.type===tpF)
+  ).slice(0,50);
+  const tbody=document.getElementById("cr-table-body");
+  tbody.innerHTML="";
+  rows.forEach(q=>{
+    const tr=document.createElement("tr");
+    tr.innerHTML=`
+      <td>${q.id}</td>
+      <td>${q.app}</td>
+      <td>${q.cm}</td>
+      <td>${q.ca}</td>
+      <td>${q.type}</td>
+      <td style="font-family:var(--mono)">${q.tat}h</td>
+      <td><span class="badge badge-${q.status.toLowerCase()}">${q.status}</span></td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+/* ══════════════════════════════════════════════
+   CHARTS
+═══════════════════════════════════════════════ */
+const managers=["Ravi Singh","Rahul Sharma","Amit Jain","Neha Gupta","Pooja Verma"];
+const shortNames=["Ravi S.","Rahul S.","Amit J.","Neha G.","Pooja V."];
+let charts={};
+
+function buildCharts(){
+  // 1. SM Apps stacked bar
+  charts.smApps = new Chart(document.getElementById("chart-sm-apps"), {
+    type:"bar",
+    data:{
+      labels:shortNames,
+      datasets:[
+        {label:"Disbursed",data:managers.map(m=>LOANS.filter(l=>l.sm===m&&l.status==="Disbursed").length),backgroundColor:"#0e9f6e"},
+        {label:"Approved", data:managers.map(m=>LOANS.filter(l=>l.sm===m&&l.status==="Approved").length), backgroundColor:"#1a56db"},
+        {label:"Pending",  data:managers.map(m=>LOANS.filter(l=>l.sm===m&&l.status==="Pending").length),  backgroundColor:"#e3a008"},
+        {label:"Rejected", data:managers.map(m=>LOANS.filter(l=>l.sm===m&&l.status==="Rejected").length), backgroundColor:"#e02424"},
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true}},plugins:{legend:{position:"bottom",labels:{boxWidth:10,font:{size:11}}}}}
+  });
+
+  // 2. SM Amounts grouped bar
+  charts.smAmounts = new Chart(document.getElementById("chart-sm-amounts"), {
+    type:"bar",
+    data:{
+      labels:shortNames,
+      datasets:[
+        {label:"Login Amt (₹L)",    data:managers.map(m=>Math.round(LOANS.filter(l=>l.sm===m).reduce((s,l)=>s+l.login,0)/100000)), backgroundColor:"rgba(26,86,219,.7)"},
+        {label:"Disbursed Amt (₹L)",data:managers.map(m=>Math.round(LOANS.filter(l=>l.sm===m).reduce((s,l)=>s+l.disbursed,0)/100000)), backgroundColor:"rgba(14,159,110,.7)"},
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:true}},plugins:{legend:{position:"bottom",labels:{boxWidth:10,font:{size:11}}}}}
+  });
+
+  // 3. Status pie
+  const statuses={Disbursed:0,Approved:0,Pending:0,Rejected:0};
+  LOANS.forEach(l=>statuses[l.status]=(statuses[l.status]||0)+1);
+  charts.statusPie = new Chart(document.getElementById("chart-status-pie"), {
+    type:"doughnut",
+    data:{
+      labels:Object.keys(statuses),
+      datasets:[{data:Object.values(statuses),backgroundColor:["#0e9f6e","#1a56db","#e3a008","#e02424"],borderWidth:2}]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom",labels:{boxWidth:10,font:{size:11}}}}}
+  });
+
+  // 4. Product pie
+  const products={};
+  LOANS.forEach(l=>products[l.product]=(products[l.product]||0)+1);
+  charts.productPie = new Chart(document.getElementById("chart-product-pie"), {
+    type:"doughnut",
+    data:{
+      labels:Object.keys(products),
+      datasets:[{data:Object.values(products),backgroundColor:["#1a56db","#0e9f6e","#e3a008"],borderWidth:2}]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom",labels:{boxWidth:10,font:{size:11}}}}}
+  });
+
+  // 5. Region bar
+  const regions={North:0,South:0,East:0,West:0};
+  LOANS.forEach(l=>regions[l.region]=(regions[l.region]||0)+l.login);
+  charts.regionBar = new Chart(document.getElementById("chart-region-bar"), {
+    type:"bar",
+    data:{
+      labels:Object.keys(regions),
+      datasets:[{label:"Login Amt (₹L)",data:Object.values(regions).map(v=>Math.round(v/100000)),backgroundColor:["#1a56db","#0e9f6e","#e3a008","#e02424"]}]
+    },
+    options:{responsive:true,maintainAspectRatio:false,indexAxis:"y",scales:{x:{beginAtZero:true}},plugins:{legend:{display:false}}}
+  });
+
+  // ── CREDIT OPS CHARTS ──
+
+  // 6. CM queries stacked
+  const cms=["CM_A","CM_B","CM_C"];
+  charts.cmQueries = new Chart(document.getElementById("chart-cm-queries"), {
+    type:"bar",
+    data:{
+      labels:cms,
+      datasets:[
+        {label:"Open",   data:cms.map(c=>QUERIES.filter(q=>q.cm===c&&q.status==="Open").length),   backgroundColor:"#e3a008"},
+        {label:"Closed", data:cms.map(c=>QUERIES.filter(q=>q.cm===c&&q.status==="Closed").length), backgroundColor:"#0e9f6e"},
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true}},plugins:{legend:{position:"bottom",labels:{boxWidth:10,font:{size:11}}}}}
+  });
+
+  // 7. CA avg TAT
+  const cas=["CA_1","CA_2","CA_3","CA_4"];
+  charts.caTAT = new Chart(document.getElementById("chart-ca-tat"), {
+    type:"bar",
+    data:{
+      labels:cas,
+      datasets:[{
+        label:"Avg TAT (hrs)",
+        data:cas.map(ca=>{
+          const qs=QUERIES.filter(q=>q.ca===ca);
+          return qs.length?+(qs.reduce((s,q)=>s+q.tat,0)/qs.length).toFixed(1):0;
+        }),
+        backgroundColor:["#1a56db","#0e9f6e","#e3a008","#e02424"]
+      }]
+    },
+    options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:true}},plugins:{legend:{display:false}}}
+  });
+
+  // 8. Query type doughnut
+  const qtypes={};
+  QUERIES.forEach(q=>qtypes[q.type]=(qtypes[q.type]||0)+1);
+  charts.queryType = new Chart(document.getElementById("chart-query-type"), {
+    type:"doughnut",
+    data:{
+      labels:Object.keys(qtypes),
+      datasets:[{data:Object.values(qtypes),backgroundColor:["#1a56db","#0e9f6e","#e3a008","#e02424"],borderWidth:2}]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"right",labels:{boxWidth:10,font:{size:11}}}}}
+  });
+
+  // 9. CA open/closed grouped
+  charts.caOpenClose = new Chart(document.getElementById("chart-ca-openclose"), {
+    type:"bar",
+    data:{
+      labels:cas,
+      datasets:[
+        {label:"Open",   data:cas.map(ca=>QUERIES.filter(q=>q.ca===ca&&q.status==="Open").length),   backgroundColor:"#e3a008"},
+        {label:"Closed", data:cas.map(ca=>QUERIES.filter(q=>q.ca===ca&&q.status==="Closed").length), backgroundColor:"#0e9f6e"},
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,scales:{x:{stacked:false},y:{beginAtZero:true}},plugins:{legend:{position:"bottom",labels:{boxWidth:10,font:{size:11}}}}}
+  });
+
+  // 10. TAT distribution histogram
+  const buckets={"0–5h":0,"6–10h":0,"11–15h":0,"16–20h":0,"21–25h":0};
+  QUERIES.forEach(q=>{
+    if(q.tat<=5)buckets["0–5h"]++;
+    else if(q.tat<=10)buckets["6–10h"]++;
+    else if(q.tat<=15)buckets["11–15h"]++;
+    else if(q.tat<=20)buckets["16–20h"]++;
+    else buckets["21–25h"]++;
+  });
+  charts.tatDist = new Chart(document.getElementById("chart-tat-dist"), {
+    type:"bar",
+    data:{
+      labels:Object.keys(buckets),
+      datasets:[{label:"Queries",data:Object.values(buckets),backgroundColor:"#1a56db88",borderColor:"#1a56db",borderWidth:2}]
+    },
+    options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:true}},plugins:{legend:{display:false}}}
+  });
+}
+
+// Allow Enter key on login
+document.addEventListener("keydown",e=>{
+  if(e.key==="Enter"&&document.getElementById("login-screen").style.display!=="none") doLogin();
+});
+</script>
+<script>
+const API_BASE = "http://localhost:3000/api";
+let currentUser = null;
+let authToken = null;
+
+async function loadDashboardData() {
+
+    try {
+
+        // KPI API
+        const kpiResponse =
+            await fetch(`${API_BASE}/loans/kpis`);
+
+        const kpis =
+            await kpiResponse.json();
+
+        document.getElementById("totalApplications")
+            .textContent =
+            kpis.totalApplications;
+
+        document.getElementById("totalLogin")
+            .textContent =
+            "₹" + Number(kpis.totalLogin).toLocaleString();
+
+        document.getElementById("totalDisbursed")
+            .textContent =
+            "₹" + Number(kpis.totalDisbursed).toLocaleString();
+
+        // Loan API
+        const loanResponse =
+            await fetch(`${API_BASE}/loans`);
+
+        const loans =
+            await loanResponse.json();
+
+        renderLoanTable(loans);
+
+        buildStatusChart(
+            kpis.statusDistribution
+        );
+
+    }
+    catch(error) {
+
+        console.error(
+            "API Error:",
+            error
+        );
+    }
+}
+
+function renderLoanTable(loans) {
+
+    const tbody = document.getElementById("sm-table-body");
+
+    tbody.innerHTML = "";
+
+    loans.forEach(loan => {
+
+        const date = new Date(
+            loan.application_date
+        ).toLocaleDateString("en-IN");
+
+        tbody.innerHTML += `
+            <tr>
+                <td>${loan.app_id}</td>
+                <td>${date}</td>
+                <td>${loan.region}</td>
+                <td>${loan.branch}</td>
+                <td>${loan.product_type}</td>
+                <td>${loan.manager_name}</td>
+                <td>₹${Number(
+                    loan.login_amount
+                ).toLocaleString()}</td>
+                <td>${loan.status}</td>
+                <td>₹${Number(
+                    loan.approved_amount
+                ).toLocaleString()}</td>
+                <td>₹${Number(
+                    loan.disbursed_amount
+                ).toLocaleString()}</td>
+            </tr>
+        `;
+    });
+}
+let statusChart;
+
+function buildStatusChart(statusData) {
+
+    const canvas =
+        document.getElementById(
+            "chart-sm-apps"
+        );
+
+    if(!canvas) return;
+
+    if(statusChart)
+        statusChart.destroy();
+
+    statusChart = new Chart(
+        canvas,
+        {
+            type: "bar",
+
+            data: {
+
+                labels:
+                    statusData.map(
+                        x => x.status
+                    ),
+
+                datasets: [{
+                    label:
+                        "Applications",
+
+                    data:
+                        statusData.map(
+                            x => x.count
+                        )
+                }]
+            },
+
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        }
+    );
+}
+function updateKPIs(loans) {
+
+    const totalApplications = loans.length;
+
+    const totalLogin = loans.reduce(
+        (sum, loan) =>
+            sum + Number(loan.login_amount),
+        0
+    );
+
+    const totalDisbursed = loans.reduce(
+        (sum, loan) =>
+            sum + Number(loan.disbursed_amount),
+        0
+    );
+
+    document.getElementById(
+        "totalApplications"
+    ).textContent = totalApplications;
+
+    document.getElementById(
+        "totalLogin"
+    ).textContent =
+        "₹" + totalLogin.toLocaleString();
+
+    document.getElementById(
+        "totalDisbursed"
+    ).textContent =
+        "₹" + totalDisbursed.toLocaleString();
+}
+function loadDashboard(user) {
+
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+
+    document.getElementById('user-label').innerText =
+        user.full_name;
+
+    document.getElementById('user-avatar').innerText =
+        user.full_name.charAt(0).toUpperCase();
+
+    loadKPIs();
+    loadSalesManagerChart();
+    loadAmountChart();
+    loadProductMix();
+    loadRegionChart();
+    loadManagerTable();
+
+
+}
+
+
+async function loadSalesManagerChart() {
+
+    const response = await fetch(
+        'http://localhost:3000/api/loans/sales-manager-performance'
+    );
+
+    const data = await response.json();
+
+    new Chart(
+        document.getElementById('chart-sm-apps'),
+        {
+            type: 'bar',
+
+            data: {
+
+                labels: data.map(
+                    x => x.manager_name
+                ),
+
+                datasets: [
+                    {
+                        label: 'Applications',
+                        data: data.map(
+                            x => x.totalApplications
+                        )
+                    }
+                ]
+            }
+        }
+    );
+}
+
+
+async function loadAmountChart() {
+
+    const response = await fetch(
+        'http://localhost:3000/api/loans/amount-comparison'
+    );
+
+    const data = await response.json();
+
+    new Chart(
+        document.getElementById('chart-sm-amounts'),
+        {
+            type: 'bar',
+
+            data: {
+
+                labels: data.map(
+                    x => x.manager_name
+                ),
+
+                datasets: [
+                    {
+                        label: 'Login Amount',
+                        data: data.map(
+                            x => x.loginAmount
+                        )
+                    },
+                    {
+                        label: 'Disbursed Amount',
+                        data: data.map(
+                            x => x.disbursedAmount
+                        )
+                    }
+                ]
+            }
+        }
+    );
+}
+
+
+async function loadProductMix() {
+
+    const response = await fetch(
+        'http://localhost:3000/api/loans/product-mix'
+    );
+
+    const data = await response.json();
+
+    new Chart(
+        document.getElementById('chart-product-pie'),
+        {
+            type: 'pie',
+
+            data: {
+                labels: data.map(x => x.product_type),
+                datasets: [{
+                    data: data.map(x => x.total)
+                }]
+            }
+        }
+    );
+}
+
+
+
+async function loadRegionChart() {
+
+    const response = await fetch(
+        'http://localhost:3000/api/loans/region-volume'
+    );
+
+    const data = await response.json();
+
+    new Chart(
+        document.getElementById('chart-region-bar'),
+        {
+            type: 'bar',
+
+            data: {
+
+                labels: data.map(
+                    x => x.region
+                ),
+
+                datasets: [
+                    {
+                        label: 'Login Amount',
+                        data: data.map(
+                            x => x.loginAmount
+                        )
+                    }
+                ]
+            }
+        }
+    );
+}
+
+
+async function loadManagerTable() {
+
+    const response = await fetch(
+        'http://localhost:3000/api/loans/manager-scorecard'
+    );
+
+    const data = await response.json();
+
+    const tbody =
+        document.getElementById(
+            'sm-table-body'
+        );
+
+    tbody.innerHTML = '';
+
+    data.forEach(row => {
+
+        tbody.innerHTML += `
+            <tr>
+                <td>${row.manager_name}</td>
+                <td>${row.totalApps}</td>
+                <td>${row.approved}</td>
+                <td>${row.disbursed}</td>
+                <td>${row.rejected}</td>
+                <td>${row.pending}</td>
+                <td>${row.loginAmount}</td>
+                <td>${row.disbursedAmount}</td>
+                <td>${row.disbRate}%</td>
+            </tr>
+        `;
+    });
+}
+
+
+
+
+function buildStatusChart(loans) {
+
+    const statusMap = {};
+
+    loans.forEach(loan => {
+
+        statusMap[loan.status] =
+            (statusMap[loan.status] || 0) + 1;
+    });
+
+    new Chart(
+        document.getElementById(
+            "chart-sm-apps"
+        ),
+        {
+            type: "bar",
+
+            data: {
+                labels: Object.keys(statusMap),
+
+                datasets: [{
+                    label: "Applications",
+                    data: Object.values(statusMap)
+                }]
+            }
+        }
+    );
+}
+
+function checkLogin() {
+
+    const user =
+        localStorage.getItem("user");
+
+    if (user) {
+
+        currentUser =
+            JSON.parse(user);
+
+        startApp();
+    }
+}
+
+
+const permissions = {
+  admin: {
+    salesDashboard: true,
+    creditDashboard: true,
+    managerTable: true,
+    queryTable: true
+  },
+  sales_manager: {
+    salesDashboard: true,
+    creditDashboard: false,
+    managerTable: true,
+    queryTable: false
+  },
+  credit_ops: {
+    salesDashboard: false,
+    creditDashboard: true,
+    managerTable: false,
+    queryTable: true
+  }
+};
+
+document.addEventListener(
+    "DOMContentLoaded",
+    () => {
+
+        checkLogin();
+
+        if (currentUser) {
+
+            loadDashboard();
+        }
+    }
+);
+
+</script>
+</body>
+</html>
