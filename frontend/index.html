@@ -1069,7 +1069,7 @@ async function doLogin() {
         formData.append("password", password);
 
         const response = await fetch(
-            "http://localhost:3000/api/auth/login",
+            "http://loanpulse.onrender.com/api/auth/login",
             {
                 method: "POST",
                 body: formData
@@ -1182,7 +1182,7 @@ async function doLogout() {
     try {
 
         await fetch(
-            'http://localhost:3000/api/auth/logout',
+            'http://loanpulse.onrender.com/api/auth/logout',
             {
                 method: 'POST'
             }
@@ -1203,7 +1203,7 @@ async function loadKPIs() {
     try {
 
         const response = await fetch(
-            'http://localhost:3000/api/loans/kpis'
+            'http://loanpulse.onrender.com/api/loans/kpis'
         );
 
         const data = await response.json();
@@ -1901,7 +1901,7 @@ document.addEventListener("keydown",e=>{
 });
 </script>
 <script>
-const API_BASE = "http://localhost:3000/api";
+const API_BASE = "http://loanpulse.onrender.com/api";
 let currentUser = null;
 let authToken = null;
 
@@ -2084,7 +2084,7 @@ function loadDashboard(user) {
 async function loadSalesManagerChart() {
 
     const response = await fetch(
-        'http://localhost:3000/api/loans/sales-manager-performance'
+        'http://loanpulse.onrender.com/api/loans/sales-manager-performance'
     );
 
     const data = await response.json();
@@ -2117,7 +2117,7 @@ async function loadSalesManagerChart() {
 async function loadAmountChart() {
 
     const response = await fetch(
-        'http://localhost:3000/api/loans/amount-comparison'
+        'http://loanpulse.onrender.com/api/loans/amount-comparison'
     );
 
     const data = await response.json();
@@ -2156,7 +2156,7 @@ async function loadAmountChart() {
 async function loadProductMix() {
 
     const response = await fetch(
-        'http://localhost:3000/api/loans/product-mix'
+        'http://loanpulse.onrender.com/api/loans/product-mix'
     );
 
     const data = await response.json();
@@ -2181,7 +2181,7 @@ async function loadProductMix() {
 async function loadRegionChart() {
 
     const response = await fetch(
-        'http://localhost:3000/api/loans/region-volume'
+        'http://loanpulse.onrender.com/api/loans/region-volume'
     );
 
     const data = await response.json();
@@ -2214,7 +2214,7 @@ async function loadRegionChart() {
 async function loadManagerTable() {
 
     const response = await fetch(
-        'http://localhost:3000/api/loans/manager-scorecard'
+        'http://loanpulse.onrender.com/api/loans/manager-scorecard'
     );
 
     const data = await response.json();
