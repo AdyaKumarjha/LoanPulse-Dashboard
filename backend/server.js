@@ -8,11 +8,7 @@ const authRoutes = require('./routes/auth');
 
 const app = express();
 
-app.use(cors({
-    origin: [
-        "https://loanpulse-dashboard.vercel.app"
-    ]
-}));
+app.use(cors());
 app.use(express.json());
 
 app.use('/api/loans', loanRoutes);
